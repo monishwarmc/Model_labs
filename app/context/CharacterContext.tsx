@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState } from "react";
+import { expressions } from "../components/expressions";
 
 export type ActionName =
   | "waving_hand_gesture(hello)"
@@ -29,12 +30,7 @@ export interface SequenceItem {
   face_expression: string;
 }
 
-export const FACIAL_EXPRESSIONS: Record<string, Record<string, number>> = {
-  normal: {},
-  happy: { mouthSmileLeft: 0.85, mouthSmileRight: 0.85, eyeSquintLeft: 0.35, eyeSquintRight: 0.35 },
-  sad: { browOuterUpLeft: 0.5, browOuterUpRight: 0.5, mouthFrownLeft: 0.6, mouthFrownRight: 0.6 },
-  thinking: { browInnerUp: 0.6, eyeLookUpLeft: 0.3, mouthPucker: 0.2 },
-};
+export const FACIAL_EXPRESSIONS: Record<string, Record<string, number>> = expressions
 
 interface CharacterContextType {
   animation: ActionName;

@@ -21,11 +21,14 @@ export const Light = () => {
 //   });
 
   return (
+    <>
+    <ambientLight intensity={0.5}/>
     <directionalLight
     //   ref={lightRef}
       position={[10, 5, 3]}
       castShadow
       shadow-mapSize={2048}
     />
+    </>
   );
 };

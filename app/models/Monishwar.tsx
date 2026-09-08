@@ -4,20 +4,15 @@ import * as THREE from "three";
 import { useEffect, useRef, useMemo } from "react";
 import { ThreeElements, useFrame } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
-import { GLTF, SkeletonUtils } from "three-stdlib";
+import { SkeletonUtils } from "three-stdlib";
 import { useControls, button, folder } from "leva";
 import { useCharacter, ActionName, FACIAL_EXPRESSIONS } from "@/app/context/CharacterContext";
 
 type LevaControlValue = number | string;
 type Schema = Parameters<typeof folder>[0];
 
-interface GLTFAction extends THREE.AnimationClip {
-  name: ActionName;
-}
-
 const ALL_ANIMATIONS: (ActionName | "none")[] = [
   "none",
-  "breathing_idle_standing",
   "waving_hand_gesture(hello)",
   "walking",
   "Stretching_arms",
@@ -38,13 +33,40 @@ const ALL_ANIMATIONS: (ActionName | "none")[] = [
   "Acknowledging",
 ];
 
+const FACIAL_EXPRESSION_KEYS = Object.keys(FACIAL_EXPRESSIONS);
+
 export function Monishwar(props: ThreeElements["group"]) {
   const group = useRef<THREE.Group>(null!);
-  const { scene, animations } = useGLTF("models/monishwar-animations.glb");
+  const { scene, animations } = useGLTF("/models/monishwar-animations.glb");
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
 
   const { mixer } = useAnimations(animations, clone);
-  const { animation, setAnimation, facialExpression, isThinking } = useCharacter();
+  const { animation, setAnimation, facialExpression, isThinking, setFacialExpression } = useCharacter();
+
+  // Track currently playing primary action to avoid calling mixer.stopAllAction()
+  const currentActionRef = useRef<THREE.AnimationAction | null>(null);
+
+  // Continuous Background Additive Breathing Setup
+  useEffect(() => {
+    if (!mixer) return;
+
+    const baseClip = animations.find((a) => a.name === "breathing_idle_standing");
+    if (!baseClip) return;
+
+    const additiveClip = THREE.AnimationUtils.makeClipAdditive(baseClip.clone(), 0);
+    additiveClip.blendMode = THREE.AdditiveAnimationBlendMode;
+
+    const breathingAction = mixer.clipAction(additiveClip);
+    breathingAction
+      .reset()
+      .setEffectiveWeight(0.6)
+      .play();
+
+    return () => {
+      breathingAction.stop();
+      mixer.uncacheClip(additiveClip);
+    };
+  }, [animations, mixer]);
 
   const lastNodOffsetRef = useRef<number>(0);
   const morphMeshesRef = useRef<THREE.SkinnedMesh[]>([]);
@@ -127,6 +149,17 @@ export function Monishwar(props: ThreeElements["group"]) {
     };
   }, [clone]);
 
+  const allMorphKeys = useMemo(
+    () => [
+      ...morphCategories.eyes,
+      ...morphCategories.brows,
+      ...morphCategories.mouth,
+      ...morphCategories.teeth,
+      ...morphCategories.others,
+    ],
+    [morphCategories]
+  );
+
   useEffect(() => {
     morphMeshesRef.current = morphs;
     bonesMapRef.current = bones;
@@ -165,6 +198,17 @@ export function Monishwar(props: ThreeElements["group"]) {
           },
         },
       }),
+      "Facial Expressions": folder({
+        selectExpression: {
+          value: facialExpression || FACIAL_EXPRESSION_KEYS[0] || "default",
+          options: FACIAL_EXPRESSION_KEYS,
+          onChange: (val: string) => {
+            if (val && val !== facialExpression) {
+              setFacialExpression(val);
+            }
+          },
+        },
+      }),
     };
 
     if (boneCategories.torso.length) schema["Bones: Torso & Head"] = folder(createBoneFolderSchema(boneCategories.torso));
@@ -181,7 +225,7 @@ export function Monishwar(props: ThreeElements["group"]) {
     if (morphCategories.others.length) schema["Other Morphs"] = folder(createMorphSchema(morphCategories.others));
 
     return schema;
-  }, [morphCategories, boneCategories, animation, setAnimation]);
+  }, [morphCategories, boneCategories, animation, setAnimation, facialExpression, setFacialExpression]);
 
   const [controls, setControls] = useControls(
     "Avatar Controls Inspector",
@@ -189,21 +233,27 @@ export function Monishwar(props: ThreeElements["group"]) {
     [levaSchema]
   );
 
+  // Sync sliders in an effect whenever facialExpression changes
+  useEffect(() => {
+    if (!facialExpression) return;
+    const activePreset = FACIAL_EXPRESSIONS[facialExpression] || {};
+    const sliderUpdates: Record<string, number> = {};
+
+    allMorphKeys.forEach((key) => {
+      sliderUpdates[key] = activePreset[key] ?? 0;
+    });
+
+    setControls(sliderUpdates);
+  }, [facialExpression, allMorphKeys, setControls]);
+
   useControls("Avatar Controls Inspector", {
     "Reset All Controls": button(() => {
       const resetMap: Record<string, LevaControlValue> = {
         selectAnimation: "none",
+        selectExpression: FACIAL_EXPRESSION_KEYS[0] || "default",
       };
 
-      const categories = [
-        ...morphCategories.eyes,
-        ...morphCategories.brows,
-        ...morphCategories.mouth,
-        ...morphCategories.teeth,
-        ...morphCategories.others,
-      ];
-
-      categories.forEach((key) => {
+      allMorphKeys.forEach((key) => {
         resetMap[key] = 0;
       });
 
@@ -215,32 +265,37 @@ export function Monishwar(props: ThreeElements["group"]) {
 
       setControls(resetMap);
       setAnimation("none" as ActionName);
+      setFacialExpression(FACIAL_EXPRESSION_KEYS[0] || "default");
     }),
     "Log Expression JSON": button(() => {
       const activeValues: Record<string, number> = {};
 
+      // Traverse `clone` directly (useMemo variable, no ref.current access)
       clone.traverse((child) => {
         const mesh = child as THREE.SkinnedMesh;
         if (mesh.isMesh && mesh.morphTargetDictionary && mesh.morphTargetInfluences) {
-          Object.entries(mesh.morphTargetDictionary).forEach(([name, idx]) => {
-            const val = mesh.morphTargetInfluences![idx];
-            if (val > 0.01) {
-              activeValues[name] = Number(val.toFixed(2));
+          Object.entries(mesh.morphTargetDictionary).forEach(([name, index]) => {
+            const value = mesh.morphTargetInfluences![index];
+            if (value > 0.01) {
+              activeValues[name] = Number(value.toFixed(2));
             }
           });
         }
       });
 
-      console.log("Exported Expression Object:", JSON.stringify(activeValues, null, 2));
+      console.log("Exported Expression Object:", JSON.stringify(activeValues, null, 4));
     }),
   });
 
-  // Handle animation playback via AnimationMixer
+  // Main Animation Playback Handler
   useEffect(() => {
     if (!mixer) return;
 
     if (!animation || (animation as string) === "none") {
-      mixer.stopAllAction();
+      if (currentActionRef.current) {
+        currentActionRef.current.fadeOut(0.3);
+        currentActionRef.current = null;
+      }
       return;
     }
 
@@ -252,39 +307,31 @@ export function Monishwar(props: ThreeElements["group"]) {
 
     if (!matchedClip) return;
 
-    const currentAction = mixer.clipAction(matchedClip);
+    const nextAction = mixer.clipAction(matchedClip);
 
-    if (currentAction) {
-      mixer.stopAllAction();
-      currentAction.reset();
+    if (nextAction) {
+      if (currentActionRef.current && currentActionRef.current !== nextAction) {
+        currentActionRef.current.fadeOut(0.3);
+      }
 
       const isFreezePose =
         animation.includes("sitting") ||
-        animation.includes("Sitting") ||
-        animation.includes("pose") ||
-        animation.includes("Knee_down");
+        animation.includes("pose");
 
       if (isFreezePose) {
-        currentAction.setLoop(THREE.LoopOnce, 1);
-        currentAction.clampWhenFinished = true;
+        nextAction.setLoop(THREE.LoopOnce, 1);
+        nextAction.clampWhenFinished = true;
       } else {
-        currentAction.setLoop(THREE.LoopRepeat, Infinity);
-        currentAction.clampWhenFinished = false;
+        nextAction.setLoop(THREE.LoopRepeat, Infinity);
+        nextAction.clampWhenFinished = false;
       }
 
-      currentAction.fadeIn(0.3).play();
-
-      return () => {
-        currentAction.fadeOut(0.3);
-      };
+      nextAction.reset().fadeIn(0.3).play();
+      currentActionRef.current = nextAction;
     }
   }, [animation, animations, mixer]);
 
   useFrame((state, delta) => {
-    const activePreset = isThinking
-      ? FACIAL_EXPRESSIONS.thinking
-      : FACIAL_EXPRESSIONS[facialExpression] || {};
-
     const typedControls = controls as unknown as Record<string, number>;
     const meshes = morphMeshesRef.current;
     const bonesMap = bonesMapRef.current;
@@ -296,8 +343,10 @@ export function Monishwar(props: ThreeElements["group"]) {
       Object.keys(mesh.morphTargetDictionary).forEach((name) => {
         const targetIdx = mesh.morphTargetDictionary![name];
         if (targetIdx !== undefined) {
-          const manualVal = typeof typedControls[name] === "number" ? typedControls[name] : 0;
-          const targetVal = manualVal !== 0 ? manualVal : activePreset[name] || 0;
+          // Read value directly from Leva slider controls unless thinking mode is active
+          const targetVal = isThinking
+            ? (FACIAL_EXPRESSIONS.thinking?.[name] ?? 0)
+            : (typeof typedControls[name] === "number" ? typedControls[name] : 0);
 
           mesh.morphTargetInfluences![targetIdx] = THREE.MathUtils.lerp(
             mesh.morphTargetInfluences![targetIdx],
@@ -308,7 +357,7 @@ export function Monishwar(props: ThreeElements["group"]) {
       });
     });
 
-    // Apply Bone Rotations relative to initial rest pose
+    // Apply Bone Rotations
     boneList.forEach((bName) => {
       const bone = bonesMap[bName];
       const initRot = initialRotations[bName];
@@ -349,4 +398,4 @@ export function Monishwar(props: ThreeElements["group"]) {
   );
 }
 
-useGLTF.preload("models/monishwar-animations.glb");
+useGLTF.preload("/models/monishwar-animations.glb");
