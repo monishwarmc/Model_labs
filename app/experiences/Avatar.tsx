@@ -23,9 +23,33 @@ export default function Avatar() {
 
   return (
     <> 
-      <div className={isMobile ? "fixed bottom-1 left-0 w-full max-h-[45vh] z-1 overflow-y-auto" : "w-2/3 max-w-[600px] overflow-hidden"}> 
-        <Leva fill={isMobile} collapsed={isMobile} theme={{ space: { rowGap: "6px", }, }} titleBar={{ drag: !isMobile }} /> 
-      </div>
+      {isMobile ? (
+  // 📱 Mobile: Locked to the bottom container, no dragging allowed
+  <div className="fixed bottom-0 left-0 w-full z-10 max-h-[45vh] overflow-hidden">
+    <Leva 
+      fill={true} 
+      collapsed={true} 
+      theme={{ space: { rowGap: "4px" } }} 
+      hideCopyButton={true}
+      titleBar={{ drag: false }} 
+    />
+  </div>
+) : (
+  // 💻 Desktop: Floating panel with natural, glitch-free dragging
+  <Leva 
+    fill={false} // Lets Leva use its native desktop layout
+    collapsed={false} 
+    theme={{ 
+      sizes: { rootWidth: '450px' }, // Make it wide/big on desktop seamlessly
+      space: { rowGap: "6px" } 
+    }} 
+    titleBar={{ 
+      drag: true,
+      position: { x: 20, y: 20 } // Sets its starting coordinates safely on the screen
+    }} 
+  />
+)}
+
 
 
 
