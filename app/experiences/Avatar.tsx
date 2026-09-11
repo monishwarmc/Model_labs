@@ -22,24 +22,10 @@ export default function Avatar() {
   }, []);
 
   return (
-    <>
-<div className={isMobile 
-  ? "fixed bottom-0 left-0 w-full z-1 overflow-hidden pointer-events-none" 
-  : "absolute top-4 right-4 z-10 w-[600px] overflow-hidden"
-}> 
-  <div className="pointer-events-auto w-full h-full">
-    <Leva 
-      fill={true} 
-      collapsed={isMobile} 
-      theme={{ 
-        sizes: { rootWidth: '100%' },
-        space: { rowGap: "4px" } 
-      }} 
-      hideCopyButton={true} // Removes extra UI clutter that causes overflow
-      titleBar={{ drag: !isMobile }} 
-    /> 
-  </div>
-</div>
+    <> 
+      <div className={isMobile ? "fixed bottom-1 left-0 w-full max-h-[45vh] z-1 overflow-y-auto" : "w-[600px]"}> 
+        <Leva fill={isMobile} collapsed={isMobile} theme={{ space: { rowGap: "6px", }, }} titleBar={{ drag: !isMobile }} /> 
+      </div>
 
 
 
