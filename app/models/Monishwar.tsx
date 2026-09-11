@@ -1,7 +1,7 @@
 "use client";
 
 import * as THREE from "three";
-import { useEffect, useRef, useMemo } from "react";
+import { useEffect, useRef, useMemo, useLayoutEffect } from "react";
 import { ThreeElements, useFrame } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { SkeletonUtils } from "three-stdlib";
@@ -234,7 +234,7 @@ export function Monishwar(props: ThreeElements["group"]) {
   );
 
   // Sync sliders in an effect whenever facialExpression changes
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!facialExpression) return;
     const activePreset = FACIAL_EXPRESSIONS[facialExpression] || {};
     const sliderUpdates: Record<string, number> = {};
@@ -288,7 +288,7 @@ export function Monishwar(props: ThreeElements["group"]) {
   });
 
   // Main Animation Playback Handler
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mixer) return;
 
     if (!animation || (animation as string) === "none") {
