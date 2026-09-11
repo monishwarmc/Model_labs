@@ -23,7 +23,7 @@ export default function Avatar() {
 
   return (
     <>
-      <div className={isMobile ? "fixed bottom-1 left-0 w-full max-h-[45vh] z-1 overflow-y-auto" : "w-1/3"}>
+      <div className={isMobile ? "fixed bottom-1 left-0 w-full max-h-[45vh] z-1 overflow-y-auto" : "w-full"}>
         <Leva
           fill={isMobile}
           collapsed={isMobile}
