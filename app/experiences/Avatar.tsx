@@ -23,7 +23,7 @@ export default function Avatar() {
 
   return (
     <> 
-      <div className={isMobile ? "fixed bottom-1 left-0 w-full max-h-[45vh] z-1 overflow-y-auto" : "w-[600px]"}> 
+      <div className={isMobile ? "fixed bottom-1 left-0 w-full max-h-[45vh] z-1 overflow-y-auto" : "w-2/3 max-w-[600px] overflow-hidden"}> 
         <Leva fill={mobile} collapsed={isMobile} theme={{ space: { rowGap: "6px", }, }} titleBar={{ drag: !isMobile }} /> 
       </div>
 
