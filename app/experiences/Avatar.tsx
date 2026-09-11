@@ -23,7 +23,7 @@ export default function Avatar() {
 
   return (
     <>
-      <div className={isMobile ? "fixed bottom-1 left-0 !w-full max-h-[45vh] z-1 overflow-y-auto" : "w-2/3 max-w-[600px]"}> 
+      <div className={isMobile ? "fixed bottom-1 left-0 !w-full max-h-[45vh] z-1 overflow-y-auto" : "w-2/3 max-w-[600px] z-10"}> 
   <Leva 
     fill={true} // Keep fill true so it always stretches to match the parent wrapper
     collapsed={isMobile} 
