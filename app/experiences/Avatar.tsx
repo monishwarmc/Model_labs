@@ -23,20 +23,21 @@ export default function Avatar() {
 
   return (
     <>
-      <div className={isMobile ? "fixed bottom-1 left-0 w-full max-h-[45vh] z-1 overflow-y-auto" : "w-full"}>
-        <Leva
-          fill={isMobile}
-          collapsed={isMobile}
-          theme={{
-            space: {
-              rowGap: "6px",
-            },
-          }}
-          titleBar={{
-            drag: !isMobile
-          }}
-        />
-      </div>
+      <div className={isMobile ? "fixed bottom-1 left-0 !w-full max-h-[45vh] z-1 overflow-y-auto" : "w-2/3 max-w-[600px]"}> 
+  <Leva 
+    fill={true} // Keep fill true so it always stretches to match the parent wrapper
+    collapsed={isMobile} 
+    theme={{ 
+      sizes: {
+        // Overrides Leva's default 375px desktop restriction
+        rootWidth: isMobile ? '100%' : '100%' 
+      },
+      space: { rowGap: "6px" } 
+    }} 
+    titleBar={{ drag: !isMobile }} 
+  /> 
+</div>
+
 
       <Canvas
         dpr={[1, 1.5]}
